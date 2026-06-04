@@ -285,12 +285,17 @@ function showProjectDetails(projectId) {
   modal.classList.add('show');
 }
 
+function getResumeUrl() {
+  return state.profileData.resumeUrl || 'resume.pdf';
+}
+
 async function showResumeModal() {
   const resumePreview = document.getElementById('resumePreview');
+  const resumeUrl = getResumeUrl();
   
-  if (state.profileData.resumeUrl) {
+  if (resumeUrl) {
     resumePreview.innerHTML = `
-      <iframe src="${state.profileData.resumeUrl}#toolbar=0" 
+      <iframe src="${resumeUrl}#toolbar=0" 
               style="width: 100%; height: 600px; border: none; border-radius: 12px;"
               title="Resume">
       </iframe>
@@ -350,9 +355,10 @@ async function downloadFile(fileId) {
 }
 
 async function downloadResume() {
-  if (state.profileData.resumeUrl) {
+  const resumeUrl = getResumeUrl();
+  if (resumeUrl) {
     const link = document.createElement('a');
-    link.href = state.profileData.resumeUrl;
+    link.href = resumeUrl;
     link.download = 'Guoxuan_Zhu_Resume.pdf';
     link.click();
   }

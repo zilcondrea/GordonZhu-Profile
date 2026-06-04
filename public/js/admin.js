@@ -1,6 +1,7 @@
-const { db, storage } = window.firebaseServices || {};
+const adminDb = window.firebaseServices?.db;
 
 const ADMIN_PASSWORD = '879189509';
+const ADMIN_API_URL = 'https://us-central1-guoxuan-portfolio.cloudfunctions.net/adminAction';
 const ADMIN_TAB_IDS = {
   profile: 'adminProfile',
   projects: 'adminProjects',
@@ -20,7 +21,8 @@ const adminState = {
 
 document.addEventListener('DOMContentLoaded', () => {
   const auth = sessionStorage.getItem('adminAuth');
-  if (auth === 'true') {
+  const password = sessionStorage.getItem('adminPassword');
+  if (auth === 'true' && password) {
     adminState.isAuthenticated = true;
   }
 
@@ -65,7 +67,10 @@ function handleLogin(event) {
   const errorDiv = document.getElementById('loginError');
 
   if (password === ADMIN_PASSWORD) {
+    if (!ensureFirebaseReady(errorDiv)) return;
+
     sessionStorage.setItem('adminAuth', 'true');
+    sessionStorage.setItem('adminPassword', password);
     adminState.isAuthenticated = true;
     errorDiv.classList.remove('show');
     showAdminPanel();
@@ -77,6 +82,7 @@ function handleLogin(event) {
 
 function logout() {
   sessionStorage.removeItem('adminAuth');
+  sessionStorage.removeItem('adminPassword');
   adminState.isAuthenticated = false;
   closeAdmin();
 }
@@ -85,16 +91,61 @@ function switchAdminTab(tabName, button) {
   document.querySelectorAll('.admin-tab').forEach(btn => btn.classList.remove('active'));
   document.querySelectorAll('.admin-tab-content').forEach(content => content.style.display = 'none');
 
-  const tabId = ADMIN_TAB_IDS[tabName] || tabName;
-  document.getElementById(tabId).style.display = 'block';
+  document.getElementById(ADMIN_TAB_IDS[tabName]).style.display = 'block';
   if (button) {
     button.classList.add('active');
   }
 }
 
+function ensureFirebaseReady(errorDiv) {
+  if (adminDb) return true;
+
+  const message = 'Firebase 没有初始化成功，请检查 firebase-config.js 和网络连接。';
+  if (errorDiv) {
+    errorDiv.textContent = message;
+    errorDiv.classList.add('show');
+  } else {
+    alert(message);
+  }
+  return false;
+}
+
+function getAdminPassword() {
+  return sessionStorage.getItem('adminPassword') || document.getElementById('password')?.value || '';
+}
+
+function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error || new Error('Could not read file'));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function adminAction(action, payload = {}) {
+  const response = await fetch(ADMIN_API_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      password: getAdminPassword(),
+      action,
+      payload
+    })
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || data.ok === false) {
+    throw new Error(data.error || `Admin action failed (${response.status})`);
+  }
+  return data;
+}
+
 function showAdminError(error, fallbackMessage) {
   console.error(fallbackMessage, error);
-  alert(fallbackMessage + ': ' + (error.message || error));
+  alert(`${fallbackMessage}: ${error.message || error}`);
 }
 
 async function refreshPublicContent() {
@@ -110,12 +161,12 @@ async function uploadAvatar(event) {
   if (!file) return;
 
   try {
-    const storageRef = storage.ref('profile/avatar/' + Date.now() + '-' + file.name);
+    const storageRef = firebase.storage().ref('profile/avatar/' + Date.now() + '-' + file.name);
     await storageRef.put(file);
     const url = await storageRef.getDownloadURL();
 
     adminState.profileData.avatarUrl = url;
-    await db.collection('profile').doc('main').set({
+    await adminDb.collection('profile').doc('main').set({
       avatarUrl: url,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
@@ -134,13 +185,13 @@ async function uploadResume(event) {
   if (!file) return;
 
   try {
-    const storageRef = storage.ref('profile/resume/' + Date.now() + '-' + file.name);
+    const storageRef = firebase.storage().ref('profile/resume/' + Date.now() + '-' + file.name);
     await storageRef.put(file);
     const url = await storageRef.getDownloadURL();
 
     adminState.profileData.resumeUrl = url;
     adminState.profileData.resumeFileName = file.name;
-    await db.collection('profile').doc('main').set({
+    await adminDb.collection('profile').doc('main').set({
       resumeUrl: url,
       resumeFileName: file.name,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -159,17 +210,18 @@ async function saveProfile() {
   const github = document.getElementById('github').value;
 
   try {
-    await db.collection('profile').doc('main').set({
+    if (!ensureFirebaseReady()) return;
+
+    await adminAction('saveProfile', {
       bio,
       email,
-      github,
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    }, { merge: true });
+      github
+    });
 
     showSuccess('profileSuccess');
     await refreshPublicContent();
   } catch (error) {
-    showAdminError(error, '保存个人信息失败');
+    showAdminError(error, 'Error saving profile');
   }
 }
 
@@ -178,13 +230,15 @@ async function saveSkills() {
   const skills = skillsInput.split(',').map(s => s.trim()).filter(Boolean);
 
   try {
-    await db.collection('profile').doc('skills').set({ skills });
+    if (!ensureFirebaseReady()) return;
+
+    await adminAction('saveSkills', { skills });
     adminState.skills = skills;
     showSuccess('skillsSuccess');
     loadSkillsList();
     await refreshPublicContent();
   } catch (error) {
-    showAdminError(error, '保存技能失败');
+    showAdminError(error, 'Error saving skills');
   }
 }
 
@@ -201,8 +255,10 @@ function loadSkillsList() {
 }
 
 async function deleteSkill(index) {
-  adminState.skills.splice(index, 1);
-  await db.collection('profile').doc('skills').set({ skills: adminState.skills });
+  if (!ensureFirebaseReady()) return;
+
+  const result = await adminAction('deleteSkill', { index });
+  adminState.skills = result.skills || adminState.skills.filter((_, skillIndex) => skillIndex !== index);
   loadSkillsList();
   await refreshPublicContent();
 }
@@ -224,22 +280,23 @@ async function saveProject() {
   }
 
   try {
-    let imageUrl = '';
+    if (!ensureFirebaseReady()) return;
 
+    let imageDataUrl = '';
+    let imageFileName = '';
     if (adminState.projectImageFile) {
-      const storageRef = storage.ref('projects/' + Date.now() + '-' + adminState.projectImageFile.name);
-      await storageRef.put(adminState.projectImageFile);
-      imageUrl = await storageRef.getDownloadURL();
+      imageDataUrl = await fileToDataUrl(adminState.projectImageFile);
+      imageFileName = adminState.projectImageFile.name;
     }
 
-    await db.collection('projects').add({
+    await adminAction('saveProject', {
       title,
       description,
       category,
       tools,
       link,
-      imageUrl,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      imageDataUrl,
+      imageFileName
     });
 
     document.getElementById('projectTitle').value = '';
@@ -254,13 +311,13 @@ async function saveProject() {
     loadProjectsList();
     await refreshPublicContent();
   } catch (error) {
-    showAdminError(error, '保存项目失败');
+    showAdminError(error, 'Error saving project');
   }
 }
 
 async function loadProjectsList() {
   try {
-    const snapshot = await db.collection('projects').get();
+    const snapshot = await adminDb.collection('projects').get();
     adminState.projects = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
     const projectsList = document.getElementById('projectsList');
@@ -268,7 +325,7 @@ async function loadProjectsList() {
       <div class="item-card">
         <div class="item-info">
           <h4>${project.title}</h4>
-          <p>${project.category} · ${project.tools?.join(', ') || 'No tools'}</p>
+          <p>${project.category} • ${project.tools?.join(', ') || 'No tools'}</p>
         </div>
         <button class="delete-btn" onclick="deleteProject('${project.id}')">Delete</button>
       </div>
@@ -282,11 +339,13 @@ async function deleteProject(projectId) {
   if (!confirm('Are you sure you want to delete this project?')) return;
 
   try {
-    await db.collection('projects').doc(projectId).delete();
+    if (!ensureFirebaseReady()) return;
+
+    await adminAction('deleteProject', { id: projectId });
     loadProjectsList();
     await refreshPublicContent();
   } catch (error) {
-    showAdminError(error, '删除项目失败');
+    showAdminError(error, 'Error deleting project');
   }
 }
 
@@ -305,17 +364,15 @@ async function saveResource() {
   }
 
   try {
-    const storageRef = storage.ref('resources/' + Date.now() + '-' + adminState.resourceFile.name);
-    await storageRef.put(adminState.resourceFile);
-    const url = await storageRef.getDownloadURL();
+    if (!ensureFirebaseReady()) return;
 
-    await db.collection('resources').add({
+    const dataUrl = await fileToDataUrl(adminState.resourceFile);
+    await adminAction('saveResource', {
       type,
       name,
       description,
-      url,
       fileName: adminState.resourceFile.name,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      dataUrl
     });
 
     document.getElementById('resourceType').value = 'pdf';
@@ -326,28 +383,27 @@ async function saveResource() {
 
     showSuccess('resourceSuccess');
     loadResourcesList();
+    await refreshPublicContent();
   } catch (error) {
-    showAdminError(error, '保存资源失败');
+    showAdminError(error, 'Error saving resource');
   }
 }
 
 async function loadResourcesList() {
   try {
-    const snapshot = await db.collection('resources').get();
+    const snapshot = await adminDb.collection('resources').get();
     adminState.resources = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-    const resourcesList = document.getElementById('resourcesList');
-    if (resourcesList) {
-      resourcesList.innerHTML = adminState.resources.map(resource => `
-        <div class="item-card">
-          <div class="item-info">
-            <h4>${resource.name}</h4>
-            <p>${resource.type} · ${resource.fileName || ''}</p>
-          </div>
-          <button class="delete-btn" onclick="deleteResource('${resource.id}')">Delete</button>
+    const resourcesList = document.getElementById('adminResourcesList');
+    resourcesList.innerHTML = adminState.resources.map(resource => `
+      <div class="item-card">
+        <div class="item-info">
+          <h4>${resource.name}</h4>
+          <p>${resource.type} • ${resource.fileName || ''}</p>
         </div>
-      `).join('');
-    }
+        <button class="delete-btn" onclick="deleteResource('${resource.id}')">Delete</button>
+      </div>
+    `).join('');
   } catch (error) {
     console.error('Error loading resources:', error);
   }
@@ -357,10 +413,13 @@ async function deleteResource(resourceId) {
   if (!confirm('Are you sure you want to delete this resource?')) return;
 
   try {
-    await db.collection('resources').doc(resourceId).delete();
+    if (!ensureFirebaseReady()) return;
+
+    await adminAction('deleteResource', { id: resourceId });
     loadResourcesList();
+    await refreshPublicContent();
   } catch (error) {
-    showAdminError(error, '删除资源失败');
+    showAdminError(error, 'Error deleting resource');
   }
 }
 
@@ -375,12 +434,12 @@ async function saveLink() {
   }
 
   try {
-    await db.collection('resources').add({
-      type: 'link',
-      name: title,
+    if (!ensureFirebaseReady()) return;
+
+    await adminAction('saveLink', {
+      title,
       description,
-      url,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      url
     });
 
     document.getElementById('linkTitle').value = '';
@@ -389,14 +448,15 @@ async function saveLink() {
 
     showSuccess('linkSuccess');
     loadLinksList();
+    await refreshPublicContent();
   } catch (error) {
-    showAdminError(error, '保存链接失败');
+    showAdminError(error, 'Error saving link');
   }
 }
 
 async function loadLinksList() {
   try {
-    const snapshot = await db.collection('resources').where('type', '==', 'link').get();
+    const snapshot = await adminDb.collection('resources').where('type', '==', 'link').get();
     const links = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
     const linksList = document.getElementById('linksList');
@@ -418,10 +478,13 @@ async function deleteLink(linkId) {
   if (!confirm('Are you sure you want to delete this link?')) return;
 
   try {
-    await db.collection('resources').doc(linkId).delete();
+    if (!ensureFirebaseReady()) return;
+
+    await adminAction('deleteResource', { id: linkId });
     loadLinksList();
+    await refreshPublicContent();
   } catch (error) {
-    showAdminError(error, '删除链接失败');
+    showAdminError(error, 'Error deleting link');
   }
 }
 
@@ -435,20 +498,17 @@ function showSuccess(elementId) {
 
 async function loadAllData() {
   try {
-    const profileDoc = await db.collection('profile').doc('main').get();
+    if (!ensureFirebaseReady()) return;
+
+    const profileDoc = await adminDb.collection('profile').doc('main').get();
     if (profileDoc.exists) {
       adminState.profileData = profileDoc.data();
       document.getElementById('bio').value = adminState.profileData.bio || '';
       document.getElementById('email').value = adminState.profileData.email || '';
       document.getElementById('github').value = adminState.profileData.github || '';
-
-      if (adminState.profileData.avatarUrl) {
-        document.getElementById('heroAvatar').src = adminState.profileData.avatarUrl;
-        document.getElementById('aboutAvatar').src = adminState.profileData.avatarUrl;
-      }
     }
 
-    const skillsDoc = await db.collection('profile').doc('skills').get();
+    const skillsDoc = await adminDb.collection('profile').doc('skills').get();
     if (skillsDoc.exists) {
       adminState.skills = skillsDoc.data().skills || [];
       document.getElementById('skillsInput').value = adminState.skills.join(', ');

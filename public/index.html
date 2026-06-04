@@ -19,11 +19,187 @@
           <li><a href="#projects" class="nav-link">Projects</a></li>
           <li><a href="#resources" class="nav-link">Resources</a></li>
           <li><a href="#contact" class="nav-link">Contact</a></li>
+          <li><a href="javascript:void(0)" class="nav-link" onclick="openAdmin()">Admin</a></li>
         </ul>
         <button class="nav-toggle" id="navToggle">☰</button>
       </div>
     </div>
   </nav>
+
+  <div id="adminOverlay" class="admin-overlay">
+    <div class="admin-modal">
+      <button class="admin-close" onclick="closeAdmin()">&times;</button>
+
+      <div id="adminLogin" class="admin-login">
+        <h2>Admin Login</h2>
+        <div class="error" id="loginError"></div>
+        <form onsubmit="handleLogin(event)">
+          <div class="form-group">
+            <label for="password">Enter Admin Password</label>
+            <input type="password" id="password" required placeholder="Enter password">
+          </div>
+          <button type="submit" class="btn btn-primary">Login</button>
+        </form>
+        <p class="admin-note">Enter the password to update website content.</p>
+      </div>
+
+      <div id="adminPanel" class="admin-panel" style="display: none;">
+        <div class="admin-header">
+          <h2>Admin Dashboard</h2>
+          <button class="btn btn-secondary" onclick="logout()">Logout</button>
+        </div>
+
+        <div class="admin-tabs">
+          <button class="admin-tab active" data-tab="profile" onclick="switchAdminTab('profile', this)">Profile</button>
+          <button class="admin-tab" data-tab="projects" onclick="switchAdminTab('projects', this)">Projects</button>
+          <button class="admin-tab" data-tab="resources" onclick="switchAdminTab('resources', this)">Resources</button>
+          <button class="admin-tab" data-tab="links" onclick="switchAdminTab('links', this)">Links</button>
+        </div>
+
+        <div id="profile" class="admin-tab-content">
+          <div class="form-section">
+            <h3>Personal Information</h3>
+            <div class="form-row full">
+              <label>Avatar</label>
+              <div class="file-upload" onclick="document.getElementById('avatarInput').click()">
+                <p>Click to upload or drag and drop</p>
+                <input type="file" id="avatarInput" accept="image/*" onchange="uploadAvatar(event)">
+              </div>
+            </div>
+            <div class="form-row full">
+              <label for="bio">Bio</label>
+              <textarea id="bio" rows="4" placeholder="Enter your bio"></textarea>
+            </div>
+            <div class="form-row">
+              <div>
+                <label for="email">Email</label>
+                <input type="email" id="email" placeholder="your.email@example.com">
+              </div>
+              <div>
+                <label for="github">GitHub URL</label>
+                <input type="url" id="github" placeholder="https://github.com/...">
+              </div>
+            </div>
+            <div class="form-row full">
+              <label>Resume PDF</label>
+              <div class="file-upload" onclick="document.getElementById('resumeInput').click()">
+                <p>Click to upload resume PDF</p>
+                <input type="file" id="resumeInput" accept=".pdf" onchange="uploadResume(event)">
+              </div>
+            </div>
+            <button class="btn btn-primary" onclick="saveProfile()">Save Profile</button>
+            <div class="success" id="profileSuccess">Profile saved successfully!</div>
+          </div>
+
+          <div class="form-section">
+            <h3>Skills</h3>
+            <div class="form-row full">
+              <label for="skillsInput">Skills (comma-separated)</label>
+              <input type="text" id="skillsInput" placeholder="React, JavaScript, Node.js, ...">
+            </div>
+            <button class="btn btn-primary" onclick="saveSkills()">Save Skills</button>
+            <div class="success" id="skillsSuccess">Skills saved successfully!</div>
+            <div id="skillsList" class="items-list"></div>
+          </div>
+        </div>
+
+        <div id="projects" class="admin-tab-content" style="display:none;">
+          <div class="form-section">
+            <h3>Add New Project</h3>
+            <div class="form-row full">
+              <label for="projectTitle">Project Title</label>
+              <input type="text" id="projectTitle" placeholder="Enter project title">
+            </div>
+            <div class="form-row full">
+              <label for="projectDescription">Description</label>
+              <textarea id="projectDescription" rows="4" placeholder="Enter project description"></textarea>
+            </div>
+            <div class="form-row">
+              <div>
+                <label for="projectCategory">Category</label>
+                <input type="text" id="projectCategory" placeholder="e.g., data-analysis, energy">
+              </div>
+              <div>
+                <label for="projectTools">Tools (comma-separated)</label>
+                <input type="text" id="projectTools" placeholder="React, Python, Firebase">
+              </div>
+            </div>
+            <div class="form-row full">
+              <label for="projectLink">Project Link</label>
+              <input type="url" id="projectLink" placeholder="https://...">
+            </div>
+            <div class="form-row full">
+              <label>Project Image</label>
+              <div class="file-upload" onclick="document.getElementById('projectImageInput').click()">
+                <p>Click to upload project image</p>
+                <input type="file" id="projectImageInput" accept="image/*" onchange="handleProjectImage(event)">
+              </div>
+            </div>
+            <button class="btn btn-primary" onclick="saveProject()">Add Project</button>
+            <div class="success" id="projectSuccess">Project added successfully!</div>
+            <div id="projectsList" class="items-list"></div>
+          </div>
+        </div>
+
+        <div id="resources" class="admin-tab-content" style="display:none;">
+          <div class="form-section">
+            <h3>Add New Resource</h3>
+            <div class="form-row">
+              <div>
+                <label for="resourceType">Resource Type</label>
+                <select id="resourceType">
+                  <option value="pdf">PDF</option>
+                  <option value="excel">Excel</option>
+                  <option value="ppt">PowerPoint</option>
+                  <option value="image">Image</option>
+                  <option value="powerbi">PowerBI</option>
+                </select>
+              </div>
+              <div>
+                <label for="resourceName">Resource Name</label>
+                <input type="text" id="resourceName" placeholder="e.g., Market Analysis Report">
+              </div>
+            </div>
+            <div class="form-row full">
+              <label for="resourceDescription">Description</label>
+              <textarea id="resourceDescription" rows="3" placeholder="Brief description"></textarea>
+            </div>
+            <div class="form-row full">
+              <label>Upload File</label>
+              <div class="file-upload" onclick="document.getElementById('resourceFileInput').click()">
+                <p>Click to upload file</p>
+                <input type="file" id="resourceFileInput" onchange="handleResourceFile(event)">
+              </div>
+            </div>
+            <button class="btn btn-primary" onclick="saveResource()">Add Resource</button>
+            <div class="success" id="resourceSuccess">Resource added successfully!</div>
+            <div id="resourcesList" class="items-list"></div>
+          </div>
+        </div>
+
+        <div id="links" class="admin-tab-content" style="display:none;">
+          <div class="form-section">
+            <h3>Add External Link</h3>
+            <div class="form-row full">
+              <label for="linkTitle">Link Title</label>
+              <input type="text" id="linkTitle" placeholder="e.g., LinkedIn Profile">
+            </div>
+            <div class="form-row full">
+              <label for="linkUrl">URL</label>
+              <input type="url" id="linkUrl" placeholder="https://...">
+            </div>
+            <div class="form-row full">
+              <label for="linkDescription">Description</label>
+              <textarea id="linkDescription" rows="2" placeholder="Brief description"></textarea>
+            </div>
+            <button class="btn btn-primary" onclick="saveLink()">Add Link</button>
+            <div class="success" id="linkSuccess">Link added successfully!</div>
+            <div id="linksList" class="items-list"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Hero Section -->
   <section id="hero" class="hero">
@@ -228,8 +404,9 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.1/mammoth.browser.min.js"></script>
   
-  <script src="../firebase-config.js"></script>
+  <script src="firebase-config.js"></script>
   <script src="js/main.js"></script>
+  <script src="js/admin.js"></script>
   <script src="js/chat.js"></script>
 </body>
 </html>

@@ -2,7 +2,7 @@
 // MAIN APPLICATION LOGIC
 // ===========================
 
-const { db, storage } = window.firebaseServices;
+const siteDb = window.firebaseServices?.db;
 
 // State management
 const state = {
@@ -23,6 +23,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   
   // Setup event listeners
   setupEventListeners();
+
+  if (!siteDb) {
+    console.error('Firebase is not initialized. Dynamic content and admin uploads are unavailable.');
+    return;
+  }
   
   // Load data from Firestore
   await loadProfileData();
@@ -99,7 +104,7 @@ function toggleMobileMenu() {
 
 async function loadProfileData() {
   try {
-    const doc = await db.collection('profile').doc('main').get();
+    const doc = await siteDb.collection('profile').doc('main').get();
     if (doc.exists) {
       state.profileData = doc.data();
       updateProfileUI();
@@ -113,7 +118,7 @@ async function loadProfileData() {
 
 async function loadProjects() {
   try {
-    const snapshot = await db.collection('projects').get();
+    const snapshot = await siteDb.collection('projects').get();
     state.projects = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     renderProjects();
   } catch (error) {
@@ -123,7 +128,7 @@ async function loadProjects() {
 
 async function loadResources() {
   try {
-    const snapshot = await db.collection('resources').get();
+    const snapshot = await siteDb.collection('resources').get();
     state.resources = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     renderResources('pdf');
   } catch (error) {
@@ -133,7 +138,7 @@ async function loadResources() {
 
 async function loadSkills() {
   try {
-    const doc = await db.collection('profile').doc('skills').get();
+    const doc = await siteDb.collection('profile').doc('skills').get();
     if (doc.exists) {
       state.skills = doc.data().skills || [];
       renderSkills();

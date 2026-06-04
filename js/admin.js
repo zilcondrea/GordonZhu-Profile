@@ -1,4 +1,4 @@
-const { db, storage } = window.firebaseServices;
+const { db, storage } = window.firebaseServices || {};
 
 const ADMIN_PASSWORD = '879189509';
 

@@ -210,13 +210,12 @@ async function saveProfile() {
   const github = document.getElementById('github').value;
 
   try {
-    if (!ensureFirebaseReady()) return;
-
-    await adminAction('saveProfile', {
+    await adminDb.collection('profile').doc('main').set({
       bio,
       email,
-      github
-    });
+      github,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
 
     showSuccess('profileSuccess');
     await refreshPublicContent();
@@ -230,9 +229,7 @@ async function saveSkills() {
   const skills = skillsInput.split(',').map(s => s.trim()).filter(Boolean);
 
   try {
-    if (!ensureFirebaseReady()) return;
-
-    await adminAction('saveSkills', { skills });
+    await adminDb.collection('profile').doc('skills').set({ skills });
     adminState.skills = skills;
     showSuccess('skillsSuccess');
     loadSkillsList();
@@ -255,10 +252,8 @@ function loadSkillsList() {
 }
 
 async function deleteSkill(index) {
-  if (!ensureFirebaseReady()) return;
-
-  const result = await adminAction('deleteSkill', { index });
-  adminState.skills = result.skills || adminState.skills.filter((_, skillIndex) => skillIndex !== index);
+  adminState.skills.splice(index, 1);
+  await adminDb.collection('profile').doc('skills').set({ skills: adminState.skills });
   loadSkillsList();
   await refreshPublicContent();
 }

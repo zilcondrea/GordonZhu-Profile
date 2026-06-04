@@ -56,7 +56,7 @@
           <button class="admin-tab" data-tab="links" onclick="switchAdminTab('links', this)">Links</button>
         </div>
 
-        <div id="profile" class="admin-tab-content">
+        <div id="adminProfile" class="admin-tab-content">
           <div class="form-section">
             <h3>Personal Information</h3>
             <div class="form-row full">
@@ -103,7 +103,7 @@
           </div>
         </div>
 
-        <div id="projects" class="admin-tab-content" style="display:none;">
+        <div id="adminProjects" class="admin-tab-content" style="display:none;">
           <div class="form-section">
             <h3>Add New Project</h3>
             <div class="form-row full">
@@ -141,7 +141,7 @@
           </div>
         </div>
 
-        <div id="resources" class="admin-tab-content" style="display:none;">
+        <div id="adminResources" class="admin-tab-content" style="display:none;">
           <div class="form-section">
             <h3>Add New Resource</h3>
             <div class="form-row">
@@ -168,16 +168,16 @@
               <label>Upload File</label>
               <div class="file-upload" onclick="document.getElementById('resourceFileInput').click()">
                 <p>Click to upload file</p>
-                <input type="file" id="resourceFileInput" onchange="handleResourceFile(event)">
+                <input type="file" id="resourceFileInput" accept=".pdf,.xls,.xlsx,.csv,.ppt,.pptx,image/*" onchange="handleResourceFile(event)">
               </div>
             </div>
             <button class="btn btn-primary" onclick="saveResource()">Add Resource</button>
             <div class="success" id="resourceSuccess">Resource added successfully!</div>
-            <div id="resourcesList" class="items-list"></div>
+            <div id="adminResourcesList" class="items-list"></div>
           </div>
         </div>
 
-        <div id="links" class="admin-tab-content" style="display:none;">
+        <div id="adminLinks" class="admin-tab-content" style="display:none;">
           <div class="form-section">
             <h3>Add External Link</h3>
             <div class="form-row full">

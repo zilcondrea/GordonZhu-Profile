@@ -1,6 +1,13 @@
-const { db, storage } = window.firebaseServices || {};
+const adminDb = window.firebaseServices?.db;
+const adminStorage = window.firebaseServices?.storage;
 
 const ADMIN_PASSWORD = '879189509';
+const ADMIN_TAB_IDS = {
+  profile: 'adminProfile',
+  projects: 'adminProjects',
+  resources: 'adminResources',
+  links: 'adminLinks'
+};
 
 const adminState = {
   isAuthenticated: false,
@@ -27,7 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function openAdmin() {
-  document.getElementById('adminOverlay').classList.add('show');
+  document.getElementById('adminOverlay')?.classList.add('show');
 
   if (adminState.isAuthenticated) {
     showAdminPanel();
@@ -37,7 +44,7 @@ function openAdmin() {
 }
 
 function closeAdmin() {
-  document.getElementById('adminOverlay').classList.remove('show');
+  document.getElementById('adminOverlay')?.classList.remove('show');
 }
 
 function showAdminLogin() {
@@ -59,6 +66,8 @@ function handleLogin(event) {
   const errorDiv = document.getElementById('loginError');
 
   if (password === ADMIN_PASSWORD) {
+    if (!ensureFirebaseReady(errorDiv)) return;
+
     sessionStorage.setItem('adminAuth', 'true');
     adminState.isAuthenticated = true;
     errorDiv.classList.remove('show');
@@ -79,10 +88,31 @@ function switchAdminTab(tabName, button) {
   document.querySelectorAll('.admin-tab').forEach(btn => btn.classList.remove('active'));
   document.querySelectorAll('.admin-tab-content').forEach(content => content.style.display = 'none');
 
-  document.getElementById(tabName).style.display = 'block';
+  document.getElementById(ADMIN_TAB_IDS[tabName]).style.display = 'block';
   if (button) {
     button.classList.add('active');
   }
+}
+
+function ensureFirebaseReady(errorDiv) {
+  if (adminDb && adminStorage) return true;
+
+  const message = 'Firebase 没有初始化成功，请检查 firebase-config.js 和网络连接。';
+  if (errorDiv) {
+    errorDiv.textContent = message;
+    errorDiv.classList.add('show');
+  } else {
+    alert(message);
+  }
+  return false;
+}
+
+async function refreshPublicContent() {
+  if (typeof loadProfileData === 'function') await loadProfileData();
+  if (typeof loadSkills === 'function') await loadSkills();
+  if (typeof loadProjects === 'function') await loadProjects();
+  if (typeof loadResources === 'function') await loadResources();
+  if (typeof updateStats === 'function') updateStats();
 }
 
 async function uploadAvatar(event) {
@@ -90,11 +120,16 @@ async function uploadAvatar(event) {
   if (!file) return;
 
   try {
-    const storageRef = storage.ref(`profile/avatar/${Date.now()}-${file.name}`);
+    if (!ensureFirebaseReady()) return;
+
+    const storageRef = adminStorage.ref(`profile/avatar/${Date.now()}-${file.name}`);
     await storageRef.put(file);
     const url = await storageRef.getDownloadURL();
     adminState.profileData.avatarUrl = url;
-    alert('Avatar uploaded successfully!');
+    await adminDb.collection('profile').doc('main').set({ avatarUrl: url }, { merge: true });
+    document.getElementById('heroAvatar').src = url;
+    document.getElementById('aboutAvatar').src = url;
+    alert('Profile picture uploaded and saved successfully!');
   } catch (error) {
     console.error('Error uploading avatar:', error);
     alert('Error uploading avatar');
@@ -106,11 +141,14 @@ async function uploadResume(event) {
   if (!file) return;
 
   try {
-    const storageRef = storage.ref(`profile/resume/${Date.now()}-${file.name}`);
+    if (!ensureFirebaseReady()) return;
+
+    const storageRef = adminStorage.ref(`profile/resume/${Date.now()}-${file.name}`);
     await storageRef.put(file);
     const url = await storageRef.getDownloadURL();
     adminState.profileData.resumeUrl = url;
-    alert('Resume uploaded successfully!');
+    await adminDb.collection('profile').doc('main').set({ resumeUrl: url }, { merge: true });
+    alert('Resume uploaded and saved successfully!');
   } catch (error) {
     console.error('Error uploading resume:', error);
     alert('Error uploading resume');
@@ -123,7 +161,9 @@ async function saveProfile() {
   const github = document.getElementById('github').value;
 
   try {
-    await db.collection('profile').doc('main').set({
+    if (!ensureFirebaseReady()) return;
+
+    await adminDb.collection('profile').doc('main').set({
       bio,
       email,
       github,
@@ -132,6 +172,7 @@ async function saveProfile() {
     }, { merge: true });
 
     showSuccess('profileSuccess');
+    await refreshPublicContent();
   } catch (error) {
     console.error('Error saving profile:', error);
     alert('Error saving profile');
@@ -143,10 +184,13 @@ async function saveSkills() {
   const skills = skillsInput.split(',').map(s => s.trim()).filter(Boolean);
 
   try {
-    await db.collection('profile').doc('skills').set({ skills });
+    if (!ensureFirebaseReady()) return;
+
+    await adminDb.collection('profile').doc('skills').set({ skills });
     adminState.skills = skills;
     showSuccess('skillsSuccess');
     loadSkillsList();
+    await refreshPublicContent();
   } catch (error) {
     console.error('Error saving skills:', error);
     alert('Error saving skills');
@@ -166,9 +210,12 @@ function loadSkillsList() {
 }
 
 async function deleteSkill(index) {
+  if (!ensureFirebaseReady()) return;
+
   adminState.skills.splice(index, 1);
-  await db.collection('profile').doc('skills').set({ skills: adminState.skills });
+  await adminDb.collection('profile').doc('skills').set({ skills: adminState.skills });
   loadSkillsList();
+  await refreshPublicContent();
 }
 
 function handleProjectImage(event) {
@@ -188,14 +235,16 @@ async function saveProject() {
   }
 
   try {
+    if (!ensureFirebaseReady()) return;
+
     let imageUrl = '';
     if (adminState.projectImageFile) {
-      const storageRef = storage.ref(`projects/${Date.now()}-${adminState.projectImageFile.name}`);
+      const storageRef = adminStorage.ref(`projects/${Date.now()}-${adminState.projectImageFile.name}`);
       await storageRef.put(adminState.projectImageFile);
       imageUrl = await storageRef.getDownloadURL();
     }
 
-    await db.collection('projects').add({
+    await adminDb.collection('projects').add({
       title,
       description,
       category,
@@ -215,6 +264,7 @@ async function saveProject() {
 
     showSuccess('projectSuccess');
     loadProjectsList();
+    await refreshPublicContent();
   } catch (error) {
     console.error('Error saving project:', error);
     alert('Error saving project');
@@ -223,7 +273,7 @@ async function saveProject() {
 
 async function loadProjectsList() {
   try {
-    const snapshot = await db.collection('projects').get();
+    const snapshot = await adminDb.collection('projects').get();
     adminState.projects = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
     const projectsList = document.getElementById('projectsList');
@@ -245,8 +295,11 @@ async function deleteProject(projectId) {
   if (!confirm('Are you sure you want to delete this project?')) return;
 
   try {
-    await db.collection('projects').doc(projectId).delete();
+    if (!ensureFirebaseReady()) return;
+
+    await adminDb.collection('projects').doc(projectId).delete();
     loadProjectsList();
+    await refreshPublicContent();
   } catch (error) {
     console.error('Error deleting project:', error);
     alert('Error deleting project');
@@ -268,11 +321,13 @@ async function saveResource() {
   }
 
   try {
-    const storageRef = storage.ref(`resources/${Date.now()}-${adminState.resourceFile.name}`);
+    if (!ensureFirebaseReady()) return;
+
+    const storageRef = adminStorage.ref(`resources/${Date.now()}-${adminState.resourceFile.name}`);
     await storageRef.put(adminState.resourceFile);
     const url = await storageRef.getDownloadURL();
 
-    await db.collection('resources').add({
+    await adminDb.collection('resources').add({
       type,
       name,
       description,
@@ -289,6 +344,7 @@ async function saveResource() {
 
     showSuccess('resourceSuccess');
     loadResourcesList();
+    await refreshPublicContent();
   } catch (error) {
     console.error('Error saving resource:', error);
     alert('Error saving resource');
@@ -297,10 +353,10 @@ async function saveResource() {
 
 async function loadResourcesList() {
   try {
-    const snapshot = await db.collection('resources').get();
+    const snapshot = await adminDb.collection('resources').get();
     adminState.resources = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-    const resourcesList = document.getElementById('resourcesList');
+    const resourcesList = document.getElementById('adminResourcesList');
     resourcesList.innerHTML = adminState.resources.map(resource => `
       <div class="item-card">
         <div class="item-info">
@@ -319,8 +375,11 @@ async function deleteResource(resourceId) {
   if (!confirm('Are you sure you want to delete this resource?')) return;
 
   try {
-    await db.collection('resources').doc(resourceId).delete();
+    if (!ensureFirebaseReady()) return;
+
+    await adminDb.collection('resources').doc(resourceId).delete();
     loadResourcesList();
+    await refreshPublicContent();
   } catch (error) {
     console.error('Error deleting resource:', error);
     alert('Error deleting resource');
@@ -338,7 +397,9 @@ async function saveLink() {
   }
 
   try {
-    await db.collection('resources').add({
+    if (!ensureFirebaseReady()) return;
+
+    await adminDb.collection('resources').add({
       type: 'link',
       name: title,
       description,
@@ -352,6 +413,7 @@ async function saveLink() {
 
     showSuccess('linkSuccess');
     loadLinksList();
+    await refreshPublicContent();
   } catch (error) {
     console.error('Error saving link:', error);
     alert('Error saving link');
@@ -360,7 +422,7 @@ async function saveLink() {
 
 async function loadLinksList() {
   try {
-    const snapshot = await db.collection('resources').where('type', '==', 'link').get();
+    const snapshot = await adminDb.collection('resources').where('type', '==', 'link').get();
     const links = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
     const linksList = document.getElementById('linksList');
@@ -382,8 +444,11 @@ async function deleteLink(linkId) {
   if (!confirm('Are you sure you want to delete this link?')) return;
 
   try {
-    await db.collection('resources').doc(linkId).delete();
+    if (!ensureFirebaseReady()) return;
+
+    await adminDb.collection('resources').doc(linkId).delete();
     loadLinksList();
+    await refreshPublicContent();
   } catch (error) {
     console.error('Error deleting link:', error);
     alert('Error deleting link');
@@ -400,7 +465,9 @@ function showSuccess(elementId) {
 
 async function loadAllData() {
   try {
-    const profileDoc = await db.collection('profile').doc('main').get();
+    if (!ensureFirebaseReady()) return;
+
+    const profileDoc = await adminDb.collection('profile').doc('main').get();
     if (profileDoc.exists) {
       adminState.profileData = profileDoc.data();
       document.getElementById('bio').value = adminState.profileData.bio || '';
@@ -408,7 +475,7 @@ async function loadAllData() {
       document.getElementById('github').value = adminState.profileData.github || '';
     }
 
-    const skillsDoc = await db.collection('profile').doc('skills').get();
+    const skillsDoc = await adminDb.collection('profile').doc('skills').get();
     if (skillsDoc.exists) {
       adminState.skills = skillsDoc.data().skills || [];
       document.getElementById('skillsInput').value = adminState.skills.join(', ');
@@ -422,3 +489,22 @@ async function loadAllData() {
     console.error('Error loading data:', error);
   }
 }
+
+window.openAdmin = openAdmin;
+window.closeAdmin = closeAdmin;
+window.handleLogin = handleLogin;
+window.logout = logout;
+window.switchAdminTab = switchAdminTab;
+window.uploadAvatar = uploadAvatar;
+window.uploadResume = uploadResume;
+window.saveProfile = saveProfile;
+window.saveSkills = saveSkills;
+window.deleteSkill = deleteSkill;
+window.handleProjectImage = handleProjectImage;
+window.saveProject = saveProject;
+window.deleteProject = deleteProject;
+window.handleResourceFile = handleResourceFile;
+window.saveResource = saveResource;
+window.deleteResource = deleteResource;
+window.saveLink = saveLink;
+window.deleteLink = deleteLink;

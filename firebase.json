@@ -16,6 +16,10 @@
         "function": "chat"
       },
       {
+        "source": "/adminAction",
+        "function": "adminAction"
+      },
+      {
         "source": "/health",
         "function": "health"
       },

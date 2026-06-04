@@ -1,7 +1,7 @@
 const adminDb = window.firebaseServices?.db;
-const adminStorage = window.firebaseServices?.storage;
 
 const ADMIN_PASSWORD = '879189509';
+const ADMIN_API_URL = 'https://us-central1-guoxuan-portfolio.cloudfunctions.net/adminAction';
 const ADMIN_TAB_IDS = {
   profile: 'adminProfile',
   projects: 'adminProjects',
@@ -21,7 +21,8 @@ const adminState = {
 
 document.addEventListener('DOMContentLoaded', () => {
   const auth = sessionStorage.getItem('adminAuth');
-  if (auth === 'true') {
+  const password = sessionStorage.getItem('adminPassword');
+  if (auth === 'true' && password) {
     adminState.isAuthenticated = true;
   }
 
@@ -69,6 +70,7 @@ function handleLogin(event) {
     if (!ensureFirebaseReady(errorDiv)) return;
 
     sessionStorage.setItem('adminAuth', 'true');
+    sessionStorage.setItem('adminPassword', password);
     adminState.isAuthenticated = true;
     errorDiv.classList.remove('show');
     showAdminPanel();
@@ -80,6 +82,7 @@ function handleLogin(event) {
 
 function logout() {
   sessionStorage.removeItem('adminAuth');
+  sessionStorage.removeItem('adminPassword');
   adminState.isAuthenticated = false;
   closeAdmin();
 }
@@ -95,7 +98,7 @@ function switchAdminTab(tabName, button) {
 }
 
 function ensureFirebaseReady(errorDiv) {
-  if (adminDb && adminStorage) return true;
+  if (adminDb) return true;
 
   const message = 'Firebase 没有初始化成功，请检查 firebase-config.js 和网络连接。';
   if (errorDiv) {
@@ -105,6 +108,44 @@ function ensureFirebaseReady(errorDiv) {
     alert(message);
   }
   return false;
+}
+
+function getAdminPassword() {
+  return sessionStorage.getItem('adminPassword') || document.getElementById('password')?.value || '';
+}
+
+function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error || new Error('Could not read file'));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function adminAction(action, payload = {}) {
+  const response = await fetch(ADMIN_API_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      password: getAdminPassword(),
+      action,
+      payload
+    })
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || data.ok === false) {
+    throw new Error(data.error || `Admin action failed (${response.status})`);
+  }
+  return data;
+}
+
+function showAdminError(error, fallbackMessage) {
+  console.error(fallbackMessage, error);
+  alert(`${fallbackMessage}: ${error.message || error}`);
 }
 
 async function refreshPublicContent() {
@@ -122,17 +163,19 @@ async function uploadAvatar(event) {
   try {
     if (!ensureFirebaseReady()) return;
 
-    const storageRef = adminStorage.ref(`profile/avatar/${Date.now()}-${file.name}`);
-    await storageRef.put(file);
-    const url = await storageRef.getDownloadURL();
+    const dataUrl = await fileToDataUrl(file);
+    const result = await adminAction('uploadAvatar', {
+      fileName: file.name,
+      dataUrl
+    });
+    const url = result.uploaded.url;
     adminState.profileData.avatarUrl = url;
-    await adminDb.collection('profile').doc('main').set({ avatarUrl: url }, { merge: true });
     document.getElementById('heroAvatar').src = url;
     document.getElementById('aboutAvatar').src = url;
+    await refreshPublicContent();
     alert('Profile picture uploaded and saved successfully!');
   } catch (error) {
-    console.error('Error uploading avatar:', error);
-    alert('Error uploading avatar');
+    showAdminError(error, 'Error uploading profile picture');
   }
 }
 
@@ -143,15 +186,18 @@ async function uploadResume(event) {
   try {
     if (!ensureFirebaseReady()) return;
 
-    const storageRef = adminStorage.ref(`profile/resume/${Date.now()}-${file.name}`);
-    await storageRef.put(file);
-    const url = await storageRef.getDownloadURL();
+    const dataUrl = await fileToDataUrl(file);
+    const result = await adminAction('uploadResume', {
+      fileName: file.name,
+      dataUrl
+    });
+    const url = result.uploaded.url;
     adminState.profileData.resumeUrl = url;
-    await adminDb.collection('profile').doc('main').set({ resumeUrl: url }, { merge: true });
+    adminState.profileData.resumeFileName = result.uploaded.fileName;
+    await refreshPublicContent();
     alert('Resume uploaded and saved successfully!');
   } catch (error) {
-    console.error('Error uploading resume:', error);
-    alert('Error uploading resume');
+    showAdminError(error, 'Error uploading resume');
   }
 }
 
@@ -163,19 +209,16 @@ async function saveProfile() {
   try {
     if (!ensureFirebaseReady()) return;
 
-    await adminDb.collection('profile').doc('main').set({
+    await adminAction('saveProfile', {
       bio,
       email,
-      github,
-      avatarUrl: adminState.profileData.avatarUrl || '',
-      resumeUrl: adminState.profileData.resumeUrl || ''
-    }, { merge: true });
+      github
+    });
 
     showSuccess('profileSuccess');
     await refreshPublicContent();
   } catch (error) {
-    console.error('Error saving profile:', error);
-    alert('Error saving profile');
+    showAdminError(error, 'Error saving profile');
   }
 }
 
@@ -186,14 +229,13 @@ async function saveSkills() {
   try {
     if (!ensureFirebaseReady()) return;
 
-    await adminDb.collection('profile').doc('skills').set({ skills });
+    await adminAction('saveSkills', { skills });
     adminState.skills = skills;
     showSuccess('skillsSuccess');
     loadSkillsList();
     await refreshPublicContent();
   } catch (error) {
-    console.error('Error saving skills:', error);
-    alert('Error saving skills');
+    showAdminError(error, 'Error saving skills');
   }
 }
 
@@ -212,8 +254,8 @@ function loadSkillsList() {
 async function deleteSkill(index) {
   if (!ensureFirebaseReady()) return;
 
-  adminState.skills.splice(index, 1);
-  await adminDb.collection('profile').doc('skills').set({ skills: adminState.skills });
+  const result = await adminAction('deleteSkill', { index });
+  adminState.skills = result.skills || adminState.skills.filter((_, skillIndex) => skillIndex !== index);
   loadSkillsList();
   await refreshPublicContent();
 }
@@ -237,21 +279,21 @@ async function saveProject() {
   try {
     if (!ensureFirebaseReady()) return;
 
-    let imageUrl = '';
+    let imageDataUrl = '';
+    let imageFileName = '';
     if (adminState.projectImageFile) {
-      const storageRef = adminStorage.ref(`projects/${Date.now()}-${adminState.projectImageFile.name}`);
-      await storageRef.put(adminState.projectImageFile);
-      imageUrl = await storageRef.getDownloadURL();
+      imageDataUrl = await fileToDataUrl(adminState.projectImageFile);
+      imageFileName = adminState.projectImageFile.name;
     }
 
-    await adminDb.collection('projects').add({
+    await adminAction('saveProject', {
       title,
       description,
       category,
       tools,
       link,
-      imageUrl,
-      createdAt: new Date()
+      imageDataUrl,
+      imageFileName
     });
 
     document.getElementById('projectTitle').value = '';
@@ -266,8 +308,7 @@ async function saveProject() {
     loadProjectsList();
     await refreshPublicContent();
   } catch (error) {
-    console.error('Error saving project:', error);
-    alert('Error saving project');
+    showAdminError(error, 'Error saving project');
   }
 }
 
@@ -297,12 +338,11 @@ async function deleteProject(projectId) {
   try {
     if (!ensureFirebaseReady()) return;
 
-    await adminDb.collection('projects').doc(projectId).delete();
+    await adminAction('deleteProject', { id: projectId });
     loadProjectsList();
     await refreshPublicContent();
   } catch (error) {
-    console.error('Error deleting project:', error);
-    alert('Error deleting project');
+    showAdminError(error, 'Error deleting project');
   }
 }
 
@@ -323,17 +363,13 @@ async function saveResource() {
   try {
     if (!ensureFirebaseReady()) return;
 
-    const storageRef = adminStorage.ref(`resources/${Date.now()}-${adminState.resourceFile.name}`);
-    await storageRef.put(adminState.resourceFile);
-    const url = await storageRef.getDownloadURL();
-
-    await adminDb.collection('resources').add({
+    const dataUrl = await fileToDataUrl(adminState.resourceFile);
+    await adminAction('saveResource', {
       type,
       name,
       description,
-      url,
       fileName: adminState.resourceFile.name,
-      createdAt: new Date()
+      dataUrl
     });
 
     document.getElementById('resourceType').value = 'pdf';
@@ -346,8 +382,7 @@ async function saveResource() {
     loadResourcesList();
     await refreshPublicContent();
   } catch (error) {
-    console.error('Error saving resource:', error);
-    alert('Error saving resource');
+    showAdminError(error, 'Error saving resource');
   }
 }
 
@@ -377,12 +412,11 @@ async function deleteResource(resourceId) {
   try {
     if (!ensureFirebaseReady()) return;
 
-    await adminDb.collection('resources').doc(resourceId).delete();
+    await adminAction('deleteResource', { id: resourceId });
     loadResourcesList();
     await refreshPublicContent();
   } catch (error) {
-    console.error('Error deleting resource:', error);
-    alert('Error deleting resource');
+    showAdminError(error, 'Error deleting resource');
   }
 }
 
@@ -399,12 +433,10 @@ async function saveLink() {
   try {
     if (!ensureFirebaseReady()) return;
 
-    await adminDb.collection('resources').add({
-      type: 'link',
-      name: title,
+    await adminAction('saveLink', {
+      title,
       description,
-      url,
-      createdAt: new Date()
+      url
     });
 
     document.getElementById('linkTitle').value = '';
@@ -415,8 +447,7 @@ async function saveLink() {
     loadLinksList();
     await refreshPublicContent();
   } catch (error) {
-    console.error('Error saving link:', error);
-    alert('Error saving link');
+    showAdminError(error, 'Error saving link');
   }
 }
 
@@ -446,12 +477,11 @@ async function deleteLink(linkId) {
   try {
     if (!ensureFirebaseReady()) return;
 
-    await adminDb.collection('resources').doc(linkId).delete();
+    await adminAction('deleteResource', { id: linkId });
     loadLinksList();
     await refreshPublicContent();
   } catch (error) {
-    console.error('Error deleting link:', error);
-    alert('Error deleting link');
+    showAdminError(error, 'Error deleting link');
   }
 }
 

@@ -291,7 +291,7 @@ function showProjectDetails(projectId) {
 }
 
 function getResumeUrl() {
-  return state.profileData.resumeUrl || 'resume.pdf';
+  return state.profileData.resumeUrl || '';
 }
 
 async function showResumeModal() {
@@ -300,13 +300,17 @@ async function showResumeModal() {
   
   if (resumeUrl) {
     resumePreview.innerHTML = `
+      <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1rem;">
+        <a href="${resumeUrl}" target="_blank" rel="noopener" class="btn btn-primary">Open Resume</a>
+        <a href="${resumeUrl}" download="Guoxuan_Zhu_Resume.pdf" class="btn btn-secondary">Download Resume</a>
+      </div>
       <iframe src="${resumeUrl}#toolbar=0" 
               style="width: 100%; height: 600px; border: none; border-radius: 12px;"
               title="Resume">
       </iframe>
     `;
   } else {
-    resumePreview.innerHTML = '<p>Resume not available</p>';
+    resumePreview.innerHTML = '<p>Resume has not been uploaded yet.</p>';
   }
   
   const modal = document.getElementById('resumeModal');
@@ -366,6 +370,8 @@ async function downloadResume() {
     link.href = resumeUrl;
     link.download = 'Guoxuan_Zhu_Resume.pdf';
     link.click();
+  } else {
+    alert('Resume has not been uploaded yet.');
   }
 }
 

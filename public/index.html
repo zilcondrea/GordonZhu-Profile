@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Guoxuan Zhu - Professional Portfolio</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <!-- Navigation Bar -->
+  <nav class="navbar">
+    <div class="container">
+      <div class="nav-content">
+        <div class="logo">GZ</div>
+        <ul class="nav-menu">
+          <li><a href="#hero" class="nav-link">Home</a></li>
+          <li><a href="#about" class="nav-link">About</a></li>
+          <li><a href="#projects" class="nav-link">Projects</a></li>
+          <li><a href="#resources" class="nav-link">Resources</a></li>
+          <li><a href="#contact" class="nav-link">Contact</a></li>
+        </ul>
+        <button class="nav-toggle" id="navToggle">☰</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <section id="hero" class="hero">
+    <div class="hero-content">
+      <div class="avatar-circle">
+        <img id="heroAvatar" src="assets/images/avatar.jpg" alt="Guoxuan Zhu">
+      </div>
+      <h1 class="hero-title">Guoxuan (Gordon) Zhu</h1>
+      <p class="hero-subtitle">Master's in Energy Management | Strategic Energy & Sustainability Expert</p>
+      <button class="btn btn-primary" onclick="document.getElementById('projects').scrollIntoView({behavior: 'smooth'})">
+        View My Work
+      </button>
+    </div>
+    <div class="hero-stats">
+      <div class="stat-item">
+        <div class="stat-number" id="projectCount">0</div>
+        <div class="stat-label">Projects</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number" id="skillCount">0</div>
+        <div class="stat-label">Skills</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number" id="resourceCount">0</div>
+        <div class="stat-label">Resources</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- About Section -->
+  <section id="about" class="about">
+    <div class="container">
+      <h2 class="section-title">About Me</h2>
+      <div class="about-content">
+        <div class="about-image">
+          <img id="aboutAvatar" src="assets/images/avatar.jpg" alt="Guoxuan Zhu">
+        </div>
+        <div class="about-text">
+          <h3>Professional Background</h3>
+          <p id="aboutBio">
+            I'm a strategic energy and sustainability professional with a Master's degree in Management (Energy focus) from Tulane University. 
+            Passionate about leveraging data analytics and strategic planning to drive sustainable solutions in the energy sector.
+          </p>
+          
+          <h3>Education</h3>
+          <div class="education-item">
+            <h4>Master of Management in Energy</h4>
+            <p>Tulane University</p>
+          </div>
+
+          <h3>Core Skills</h3>
+          <div class="skills-container" id="skillsContainer">
+            <!-- Skills will be loaded dynamically -->
+          </div>
+
+          <div class="about-actions">
+            <button class="btn btn-primary" id="resumeBtn">View Resume</button>
+            <button class="btn btn-secondary" id="downloadResumeBtn">Download Resume</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Projects Section -->
+  <section id="projects" class="projects">
+    <div class="container">
+      <h2 class="section-title">Featured Projects</h2>
+      
+      <div class="filter-tags" id="filterTags">
+        <button class="filter-tag active" data-filter="all">All</button>
+        <!-- Filter tags will be loaded dynamically -->
+      </div>
+
+      <div class="projects-grid" id="projectsGrid">
+        <!-- Project cards will be loaded dynamically -->
+      </div>
+    </div>
+  </section>
+
+  <!-- Resources Section -->
+  <section id="resources" class="resources">
+    <div class="container">
+      <h2 class="section-title">Resources & Files</h2>
+      
+      <div class="resources-tabs">
+        <button class="resource-tab active" data-type="pdf">PDFs</button>
+        <button class="resource-tab" data-type="excel">Excel</button>
+        <button class="resource-tab" data-type="ppt">Presentations</button>
+        <button class="resource-tab" data-type="image">Images</button>
+        <button class="resource-tab" data-type="powerbi">PowerBI</button>
+        <button class="resource-tab" data-type="link">Links</button>
+      </div>
+
+      <div class="resources-list" id="resourcesList">
+        <!-- Resources will be loaded dynamically -->
+      </div>
+    </div>
+  </section>
+
+  <!-- Contact Section -->
+  <section id="contact" class="contact">
+    <div class="container">
+      <h2 class="section-title">Get In Touch</h2>
+      <div class="contact-content">
+        <div class="contact-info">
+          <div class="contact-item">
+            <span class="contact-icon">📧</span>
+            <div>
+              <h4>Email</h4>
+              <a href="mailto:guoxuan@example.com" id="contactEmail">guoxuan@example.com</a>
+            </div>
+          </div>
+          <div class="contact-item">
+            <span class="contact-icon">🔗</span>
+            <div>
+              <h4>LinkedIn</h4>
+              <a href="https://www.linkedin.com/in/guoxuanzhu/" target="_blank">linkedin.com/in/guoxuanzhu</a>
+            </div>
+          </div>
+          <div class="contact-item">
+            <span class="contact-icon">💻</span>
+            <div>
+              <h4>GitHub</h4>
+              <a href="https://github.com" target="_blank">github.com/guoxuanzhu</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="contact-message">
+          <p>Interested in collaboration or have questions? Let's connect!</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-content">
+        <p>&copy; 2024 Guoxuan Zhu. All rights reserved.</p>
+        <div class="footer-links">
+          <a href="https://www.linkedin.com/in/guoxuanzhu/" target="_blank">LinkedIn</a>
+          <a href="https://github.com" target="_blank">GitHub</a>
+          <a href="mailto:guoxuan@example.com">Email</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Modal for Project Details -->
+  <div id="projectModal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closeModal('projectModal')">&times;</span>
+      <div id="projectDetails"></div>
+    </div>
+  </div>
+
+  <!-- Modal for Resume Preview -->
+  <div id="resumeModal" class="modal">
+    <div class="modal-content modal-large">
+      <span class="close" onclick="closeModal('resumeModal')">&times;</span>
+      <div id="resumePreview"></div>
+    </div>
+  </div>
+
+  <!-- Modal for File Preview -->
+  <div id="fileModal" class="modal">
+    <div class="modal-content modal-large">
+      <span class="close" onclick="closeModal('fileModal')">&times;</span>
+      <div id="filePreview"></div>
+    </div>
+  </div>
+
+  <!-- AI Chat Widget -->
+  <div id="chatWidget" class="chat-widget">
+    <button class="chat-bubble" id="chatBubble" onclick="toggleChat()">
+      <span class="chat-icon">💬</span>
+    </button>
+    <div class="chat-window" id="chatWindow">
+      <div class="chat-header">
+        <h3>Ask about Guoxuan</h3>
+        <button onclick="toggleChat()" class="chat-close">&times;</button>
+      </div>
+      <div class="chat-messages" id="chatMessages"></div>
+      <div class="chat-input-area">
+        <input 
+          type="text" 
+          id="chatInput" 
+          placeholder="Ask a question..." 
+          onkeypress="handleChatKeypress(event)"
+        >
+        <button onclick="sendChatMessage()" class="chat-send">Send</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.1/mammoth.browser.min.js"></script>
+  
+  <script src="../firebase-config.js"></script>
+  <script src="js/main.js"></script>
+  <script src="js/chat.js"></script>
+</body>
+</html>

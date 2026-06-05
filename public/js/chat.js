@@ -12,7 +12,6 @@ const chatState = {
 const DEEPSEEK_URL = 'https://api.deepseek.com/chat/completions';
 
 document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('chatBubble')?.addEventListener('click', toggleChat);
   document.getElementById('chatInput')?.addEventListener('keypress', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage(); }
   });

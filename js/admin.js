@@ -1,7 +1,6 @@
 const adminDb = window.firebaseServices?.db;
 
 const ADMIN_PASSWORD = '879189509';
-const ADMIN_API_URL = 'https://us-central1-guoxuan-portfolio.cloudfunctions.net/adminAction';
 const ADMIN_TAB_IDS = {
   profile: 'adminProfile',
   projects: 'adminProjects',
@@ -67,8 +66,6 @@ function handleLogin(event) {
   const errorDiv = document.getElementById('loginError');
 
   if (password === ADMIN_PASSWORD) {
-    if (!ensureFirebaseReady(errorDiv)) return;
-
     sessionStorage.setItem('adminAuth', 'true');
     sessionStorage.setItem('adminPassword', password);
     adminState.isAuthenticated = true;
@@ -97,21 +94,18 @@ function switchAdminTab(tabName, button) {
   }
 }
 
-function ensureFirebaseReady(errorDiv) {
-  if (adminDb) return true;
-
-  const message = 'Firebase 没有初始化成功，请检查 firebase-config.js 和网络连接。';
-  if (errorDiv) {
-    errorDiv.textContent = message;
-    errorDiv.classList.add('show');
-  } else {
-    alert(message);
-  }
-  return false;
+function showAdminError(error, fallbackMessage) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error || new Error('Could not read file'));
+    reader.readAsDataURL(file);
+  });
 }
 
-function getAdminPassword() {
-  return sessionStorage.getItem('adminPassword') || document.getElementById('password')?.value || '';
+function showAdminError(error, fallbackMessage) {
+  console.error(fallbackMessage, error);
+  alert(fallbackMessage + ': ' + (error.message || error));
 }
 
 function fileToDataUrl(file) {
@@ -121,31 +115,6 @@ function fileToDataUrl(file) {
     reader.onerror = () => reject(reader.error || new Error('Could not read file'));
     reader.readAsDataURL(file);
   });
-}
-
-async function adminAction(action, payload = {}) {
-  const response = await fetch(ADMIN_API_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      password: getAdminPassword(),
-      action,
-      payload
-    })
-  });
-
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok || data.ok === false) {
-    throw new Error(data.error || `Admin action failed (${response.status})`);
-  }
-  return data;
-}
-
-function showAdminError(error, fallbackMessage) {
-  console.error(fallbackMessage, error);
-  alert(`${fallbackMessage}: ${error.message || error}`);
 }
 
 async function refreshPublicContent() {
@@ -276,23 +245,24 @@ async function saveProject() {
   }
 
   try {
-    if (!ensureFirebaseReady()) return;
+    let imageUrl = '';
 
-    let imageDataUrl = '';
-    let imageFileName = '';
     if (adminState.projectImageFile) {
-      imageDataUrl = await fileToDataUrl(adminState.projectImageFile);
-      imageFileName = adminState.projectImageFile.name;
+      if (adminState.projectImageFile.size > 900000) {
+        alert('图片超过 900KB，请先到 Firebase Console 启用 Storage：https://console.firebase.google.com/project/guoxuan-portfolio/storage');
+        return;
+      }
+      imageUrl = await fileToDataUrl(adminState.projectImageFile);
     }
 
-    await adminAction('saveProject', {
+    await adminDb.collection('projects').add({
       title,
       description,
       category,
       tools,
       link,
-      imageDataUrl,
-      imageFileName
+      imageUrl,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
 
     document.getElementById('projectTitle').value = '';
@@ -321,7 +291,7 @@ async function loadProjectsList() {
       <div class="item-card">
         <div class="item-info">
           <h4>${project.title}</h4>
-          <p>${project.category} • ${project.tools?.join(', ') || 'No tools'}</p>
+          <p>${project.category} · ${project.tools?.join(', ') || 'No tools'}</p>
         </div>
         <button class="delete-btn" onclick="deleteProject('${project.id}')">Delete</button>
       </div>
@@ -335,9 +305,7 @@ async function deleteProject(projectId) {
   if (!confirm('Are you sure you want to delete this project?')) return;
 
   try {
-    if (!ensureFirebaseReady()) return;
-
-    await adminAction('deleteProject', { id: projectId });
+    await adminDb.collection('projects').doc(projectId).delete();
     loadProjectsList();
     await refreshPublicContent();
   } catch (error) {
@@ -359,16 +327,21 @@ async function saveResource() {
     return;
   }
 
-  try {
-    if (!ensureFirebaseReady()) return;
+  if (adminState.resourceFile.size > 900000) {
+    alert('文件超过 900KB，请先到 Firebase Console 启用 Storage：\nhttps://console.firebase.google.com/project/guoxuan-portfolio/storage\n\n启用后再上传大文件。');
+    return;
+  }
 
+  try {
     const dataUrl = await fileToDataUrl(adminState.resourceFile);
-    await adminAction('saveResource', {
+
+    await adminDb.collection('resources').add({
       type,
       name,
       description,
+      url: dataUrl,
       fileName: adminState.resourceFile.name,
-      dataUrl
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
 
     document.getElementById('resourceType').value = 'pdf';
@@ -379,7 +352,6 @@ async function saveResource() {
 
     showSuccess('resourceSuccess');
     loadResourcesList();
-    await refreshPublicContent();
   } catch (error) {
     showAdminError(error, 'Error saving resource');
   }
@@ -391,15 +363,17 @@ async function loadResourcesList() {
     adminState.resources = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
     const resourcesList = document.getElementById('adminResourcesList');
-    resourcesList.innerHTML = adminState.resources.map(resource => `
-      <div class="item-card">
-        <div class="item-info">
-          <h4>${resource.name}</h4>
-          <p>${resource.type} • ${resource.fileName || ''}</p>
+    if (resourcesList) {
+      resourcesList.innerHTML = adminState.resources.map(resource => `
+        <div class="item-card">
+          <div class="item-info">
+            <h4>${resource.name}</h4>
+            <p>${resource.type} · ${resource.fileName || ''}</p>
+          </div>
+          <button class="delete-btn" onclick="deleteResource('${resource.id}')">Delete</button>
         </div>
-        <button class="delete-btn" onclick="deleteResource('${resource.id}')">Delete</button>
-      </div>
-    `).join('');
+      `).join('');
+    }
   } catch (error) {
     console.error('Error loading resources:', error);
   }
@@ -409,11 +383,8 @@ async function deleteResource(resourceId) {
   if (!confirm('Are you sure you want to delete this resource?')) return;
 
   try {
-    if (!ensureFirebaseReady()) return;
-
-    await adminAction('deleteResource', { id: resourceId });
+    await adminDb.collection('resources').doc(resourceId).delete();
     loadResourcesList();
-    await refreshPublicContent();
   } catch (error) {
     showAdminError(error, 'Error deleting resource');
   }
@@ -430,12 +401,12 @@ async function saveLink() {
   }
 
   try {
-    if (!ensureFirebaseReady()) return;
-
-    await adminAction('saveLink', {
-      title,
+    await adminDb.collection('resources').add({
+      type: 'link',
+      name: title,
       description,
-      url
+      url,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
 
     document.getElementById('linkTitle').value = '';
@@ -444,7 +415,6 @@ async function saveLink() {
 
     showSuccess('linkSuccess');
     loadLinksList();
-    await refreshPublicContent();
   } catch (error) {
     showAdminError(error, 'Error saving link');
   }
@@ -474,11 +444,8 @@ async function deleteLink(linkId) {
   if (!confirm('Are you sure you want to delete this link?')) return;
 
   try {
-    if (!ensureFirebaseReady()) return;
-
-    await adminAction('deleteResource', { id: linkId });
+    await adminDb.collection('resources').doc(linkId).delete();
     loadLinksList();
-    await refreshPublicContent();
   } catch (error) {
     showAdminError(error, 'Error deleting link');
   }
@@ -487,15 +454,11 @@ async function deleteLink(linkId) {
 function showSuccess(elementId) {
   const successDiv = document.getElementById(elementId);
   successDiv.classList.add('show');
-  setTimeout(() => {
-    successDiv.classList.remove('show');
-  }, 3000);
+  setTimeout(function() { successDiv.classList.remove('show'); }, 3000);
 }
 
 async function loadAllData() {
   try {
-    if (!ensureFirebaseReady()) return;
-
     const profileDoc = await adminDb.collection('profile').doc('main').get();
     if (profileDoc.exists) {
       adminState.profileData = profileDoc.data();

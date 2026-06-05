@@ -178,6 +178,7 @@ async function saveProfile() {
   const bio = document.getElementById('bio').value;
   const email = document.getElementById('email').value;
   const github = document.getElementById('github').value;
+  const deepseekKey = document.getElementById('deepseekKey').value.trim();
 
   try {
     await adminDb.collection('profile').doc('main').set({
@@ -186,6 +187,13 @@ async function saveProfile() {
       github,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
+
+    if (deepseekKey) {
+      await adminDb.collection('settings').doc('api').set({
+        deepseekKey,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+    }
 
     showSuccess('profileSuccess');
     await refreshPublicContent();
@@ -465,6 +473,11 @@ async function loadAllData() {
       document.getElementById('bio').value = adminState.profileData.bio || '';
       document.getElementById('email').value = adminState.profileData.email || '';
       document.getElementById('github').value = adminState.profileData.github || '';
+    }
+
+    const apiDoc = await adminDb.collection('settings').doc('api').get();
+    if (apiDoc.exists && apiDoc.data().deepseekKey) {
+      document.getElementById('deepseekKey').value = apiDoc.data().deepseekKey;
     }
 
     const skillsDoc = await adminDb.collection('profile').doc('skills').get();

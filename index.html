@@ -169,11 +169,22 @@
               <textarea id="resourceDescription" rows="3" placeholder="Brief description"></textarea>
             </div>
             <div class="form-row full">
+              <label>Upload Mode</label>
+              <div style="display:flex; gap:1rem; margin-bottom:0.5rem;">
+                <label style="cursor:pointer; color:var(--color-text);"><input type="radio" name="resourceMode" value="file" checked onchange="toggleResourceMode()"> Upload File</label>
+                <label style="cursor:pointer; color:var(--color-text);"><input type="radio" name="resourceMode" value="link" onchange="toggleResourceMode()"> Add Link</label>
+              </div>
+            </div>
+            <div class="form-row full" id="resourceFileSection">
               <label>Upload File</label>
               <div class="file-upload" onclick="document.getElementById('resourceFileInput').click()">
                 <p>Click to upload file</p>
                 <input type="file" id="resourceFileInput" accept=".pdf,.xls,.xlsx,.csv,.ppt,.pptx,image/*" onchange="handleResourceFile(event)">
               </div>
+            </div>
+            <div class="form-row full" id="resourceLinkSection" style="display:none;">
+              <label for="resourceLink">Resource URL</label>
+              <input type="url" id="resourceLink" placeholder="https://drive.google.com/... or https://...">
             </div>
             <button class="btn btn-primary" onclick="saveResource()">Add Resource</button>
             <div class="success" id="resourceSuccess">Resource added successfully!</div>

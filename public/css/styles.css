@@ -620,12 +620,8 @@ section {
   text-align: center;
   font-size: 1.15rem;
   font-weight: 600;
-  color: #1a1a1a;
+  color: #FFFFFF;
   letter-spacing: 0.02em;
-  background: rgba(255, 255, 255, 0.92);
-  padding: 1rem 2rem;
-  border-radius: 8px;
-  display: inline-block;
 }
 
 /* ===========================

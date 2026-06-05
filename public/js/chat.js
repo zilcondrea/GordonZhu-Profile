@@ -64,10 +64,33 @@ function buildSystemPrompt() {
     "RULES: Only answer about Gordon. Use visitor's language. Keep under 200 words unless asked for detail. Be friendly and professional.";
 }
 
+const DAILY_LIMIT = 50;
+
+function getTodayKey() { return 'chat_count_' + new Date().toISOString().slice(0,10); }
+
+function checkDailyLimit() {
+  var key = getTodayKey();
+  var count = parseInt(localStorage.getItem(key) || '0', 10);
+  return count < DAILY_LIMIT;
+}
+
+function incrementDailyCount() {
+  var key = getTodayKey();
+  var count = parseInt(localStorage.getItem(key) || '0', 10);
+  localStorage.setItem(key, count + 1);
+}
+
 async function sendChatMessage() {
   var input = document.getElementById('chatInput');
   var msg = input.value.trim();
   if (!msg || chatState.isLoading) return;
+
+  if (!checkDailyLimit()) {
+    addChatMessage('Daily conversation limit reached. Please try again tomorrow.', 'assistant');
+    input.value = '';
+    return;
+  }
+
   addChatMessage(msg, 'user'); input.value = '';
   chatState.isLoading = true; addChatMessage('Thinking...', 'assistant');
 
@@ -86,6 +109,7 @@ async function sendChatMessage() {
     if (!resp.ok) { var ed = await resp.json().catch(function(){return{};}); throw new Error(ed.error?.message || 'API error '+resp.status); }
     var data = await resp.json();
     addChatMessage(data.choices?.[0]?.message?.content || 'No response generated.', 'assistant');
+    incrementDailyCount();
   } catch (e) {
     console.error('Chat error:', e); removeLastMessage();
     addChatMessage('Sorry, something went wrong. Please try again.', 'assistant');

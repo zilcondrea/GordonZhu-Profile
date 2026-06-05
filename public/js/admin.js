@@ -161,18 +161,16 @@ async function uploadAvatar(event) {
   if (!file) return;
 
   try {
-    const storageRef = firebase.storage().ref('profile/avatar/' + Date.now() + '-' + file.name);
-    await storageRef.put(file);
-    const url = await storageRef.getDownloadURL();
+    const dataUrl = await fileToDataUrl(file);
 
-    adminState.profileData.avatarUrl = url;
+    adminState.profileData.avatarUrl = dataUrl;
     await adminDb.collection('profile').doc('main').set({
-      avatarUrl: url,
+      avatarUrl: dataUrl,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
 
-    document.getElementById('heroAvatar').src = url;
-    document.getElementById('aboutAvatar').src = url;
+    document.getElementById('heroAvatar').src = dataUrl;
+    document.getElementById('aboutAvatar').src = dataUrl;
     await refreshPublicContent();
     alert('头像上传成功！');
   } catch (error) {
@@ -184,15 +182,18 @@ async function uploadResume(event) {
   const file = event.target.files[0];
   if (!file) return;
 
-  try {
-    const storageRef = firebase.storage().ref('profile/resume/' + Date.now() + '-' + file.name);
-    await storageRef.put(file);
-    const url = await storageRef.getDownloadURL();
+  if (file.size > 900000) {
+    alert('文件太大，请上传小于 900KB 的 PDF。');
+    return;
+  }
 
-    adminState.profileData.resumeUrl = url;
+  try {
+    const dataUrl = await fileToDataUrl(file);
+
+    adminState.profileData.resumeUrl = dataUrl;
     adminState.profileData.resumeFileName = file.name;
     await adminDb.collection('profile').doc('main').set({
-      resumeUrl: url,
+      resumeUrl: dataUrl,
       resumeFileName: file.name,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     }, { merge: true });

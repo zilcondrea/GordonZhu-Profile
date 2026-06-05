@@ -299,12 +299,14 @@ async function showResumeModal() {
   const resumeUrl = getResumeUrl();
   
   if (resumeUrl) {
+    const isDataUrl = resumeUrl.startsWith('data:');
+    const iframeSrc = isDataUrl ? resumeUrl : resumeUrl + '#toolbar=0';
     resumePreview.innerHTML = `
       <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1rem;">
         <a href="${resumeUrl}" target="_blank" rel="noopener" class="btn btn-primary">Open Resume</a>
         <a href="${resumeUrl}" download="Guoxuan_Zhu_Resume.pdf" class="btn btn-secondary">Download Resume</a>
       </div>
-      <iframe src="${resumeUrl}#toolbar=0" 
+      <iframe src="${iframeSrc}" 
               style="width: 100%; height: 600px; border: none; border-radius: 12px;"
               title="Resume">
       </iframe>

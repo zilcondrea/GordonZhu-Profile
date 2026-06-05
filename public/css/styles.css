@@ -618,8 +618,10 @@ section {
 
 .contact-message {
   text-align: center;
-  font-size: 1.1rem;
-  color: rgba(255, 255, 255, 0.95);
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: #E6A817;
+  letter-spacing: 0.02em;
 }
 
 /* ===========================

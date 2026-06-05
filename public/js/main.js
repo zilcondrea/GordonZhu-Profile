@@ -228,6 +228,7 @@ function renderResources(type = 'pdf') {
       link: '🔗'
     };
     
+    const isExternal = resource.url && (resource.url.startsWith('http') || resource.url.startsWith('//'));
     return `
       <div class="resource-item">
         <div class="resource-icon">${icons[type]}</div>
@@ -236,8 +237,8 @@ function renderResources(type = 'pdf') {
           <div class="resource-description">${resource.description}</div>
         </div>
         <div class="resource-actions">
-          ${type === 'link' 
-            ? `<a href="${resource.url}" target="_blank" class="resource-action-btn">Open</a>`
+          ${isExternal
+            ? `<a href="${resource.url}" target="_blank" rel="noopener" class="resource-action-btn">Open</a>`
             : `<button class="resource-action-btn" onclick="previewFile('${resource.id}', '${type}')">Preview</button>
                <button class="resource-action-btn" onclick="downloadFile('${resource.id}')">Download</button>`
           }

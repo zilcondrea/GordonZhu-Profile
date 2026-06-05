@@ -321,6 +321,12 @@ async function deleteProject(projectId) {
   }
 }
 
+function toggleResourceMode() {
+  const isLink = document.querySelector('input[name="resourceMode"]:checked').value === 'link';
+  document.getElementById('resourceFileSection').style.display = isLink ? 'none' : 'block';
+  document.getElementById('resourceLinkSection').style.display = isLink ? 'block' : 'none';
+}
+
 function handleResourceFile(event) {
   adminState.resourceFile = event.target.files[0];
 }
@@ -329,32 +335,49 @@ async function saveResource() {
   const type = document.getElementById('resourceType').value;
   const name = document.getElementById('resourceName').value;
   const description = document.getElementById('resourceDescription').value;
+  const isLink = document.querySelector('input[name="resourceMode"]:checked').value === 'link';
+  const linkUrl = document.getElementById('resourceLink').value.trim();
 
-  if (!name || !description || !adminState.resourceFile) {
-    alert('Please fill in all fields and select a file');
-    return;
-  }
-
-  if (adminState.resourceFile.size > 900000) {
-    alert('文件超过 900KB，请先到 Firebase Console 启用 Storage：\nhttps://console.firebase.google.com/project/guoxuan-portfolio/storage\n\n启用后再上传大文件。');
-    return;
+  if (isLink) {
+    if (!name || !description || !linkUrl) {
+      alert('Please fill in all fields and enter a URL');
+      return;
+    }
+  } else {
+    if (!name || !description || !adminState.resourceFile) {
+      alert('Please fill in all fields and select a file');
+      return;
+    }
+    if (adminState.resourceFile.size > 900000) {
+      alert('文件超过 900KB，请使用 Add Link 模式提供链接。');
+      return;
+    }
   }
 
   try {
-    const dataUrl = await fileToDataUrl(adminState.resourceFile);
+    let url, fileName;
+
+    if (isLink) {
+      url = linkUrl;
+      fileName = '';
+    } else {
+      url = await fileToDataUrl(adminState.resourceFile);
+      fileName = adminState.resourceFile.name;
+    }
 
     await adminDb.collection('resources').add({
       type,
       name,
       description,
-      url: dataUrl,
-      fileName: adminState.resourceFile.name,
+      url,
+      fileName,
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
 
     document.getElementById('resourceType').value = 'pdf';
     document.getElementById('resourceName').value = '';
     document.getElementById('resourceDescription').value = '';
+    document.getElementById('resourceLink').value = '';
     document.getElementById('resourceFileInput').value = '';
     adminState.resourceFile = null;
 

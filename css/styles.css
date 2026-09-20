@@ -65,4 +65,81 @@ section{padding:clamp(5.5rem,10vw,8.5rem) 2rem}.section-title{margin-bottom:clam
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}@keyframes fadeInUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}@keyframes fadeInDown{from{opacity:0;transform:translateY(-16px)}to{opacity:1;transform:none}}@keyframes slideUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:none}}
 @media(max-width:820px){.nav-menu{background:rgba(250,252,251,.98);box-shadow:var(--shadow-md);display:none;flex-direction:column;gap:0;left:0;padding:.5rem var(--spacing) 1rem;position:absolute;right:0;top:70px}.nav-menu.show{display:flex}.nav-menu li{border-bottom:1px solid var(--color-border);padding:.8rem 0;width:100%}.nav-toggle{display:block}.hero{min-height:auto}.hero-stats{grid-template-columns:repeat(3,minmax(88px,1fr));width:min(100%,520px)}.stat-item{padding:1rem .65rem}.about-content{grid-template-columns:1fr}.about-image{margin:0 auto;max-width:500px;position:relative;top:auto;width:92%}.contact-content{grid-template-columns:1fr}.contact-message{min-height:180px}}
 @media(max-width:560px){section,.hero{padding-left:1.15rem;padding-right:1.15rem}.stat-number{font-size:1.5rem}.stat-label{font-size:.62rem;letter-spacing:.08em}.about-image::before{inset:12px -12px -12px 12px}.about-actions .btn{width:100%}.resource-item{align-items:flex-start;flex-wrap:wrap}.resource-info{min-width:calc(100% - 75px)}.resource-actions{padding-left:67px;width:100%}.footer-content{flex-direction:column;text-align:center}.admin-modal{padding:1.3rem}}
+/* Spacious contact composition and a balanced desktop project grid. */
+#contact .section-title {
+  margin-bottom: 1.5rem;
+}
+.contact-content {
+  display: flex;
+  flex-direction: column;
+  gap: 3rem;
+}
+.contact-message {
+  order: -1;
+  min-height: 0;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  backdrop-filter: none;
+  padding: 0;
+  justify-content: center;
+  text-align: center;
+}
+.contact-message p {
+  max-width: 680px;
+  font-family: 'Inter', sans-serif;
+  font-size: clamp(1rem, 1.5vw, 1.2rem);
+  font-weight: 400;
+  line-height: 1.8;
+  letter-spacing: 0;
+  text-wrap: balance;
+  color: #d8e6eb !important;
+}
+.contact-info {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.25rem;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  backdrop-filter: none;
+  overflow: visible;
+}
+.contact-item {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1.5rem;
+  min-width: 0;
+  padding: 1.75rem;
+  border: 1px solid rgba(255,255,255,.13);
+  border-radius: 18px;
+  background: rgba(255,255,255,.035);
+  transition: background var(--transition), border-color var(--transition), transform var(--transition);
+}
+.contact-item:hover {
+  border-color: rgba(143,215,206,.4);
+  background: rgba(255,255,255,.065);
+  transform: translateY(-3px);
+}
+.contact-item > div { min-width: 0; }
+.contact-item h4 { margin-bottom: .65rem; color: #a8c2ca; }
+.contact-item a { font-size: .9rem; line-height: 1.6; overflow-wrap: anywhere; word-break: normal; }
+.contact-icon { background: rgba(143,215,206,.09); }
+.project-content { padding: 1.65rem 1.75rem 1.8rem; }
+.project-title { font-size: 1.3rem; line-height: 1.35; }
+.project-image { display: block; }
+@media (min-width: 821px) {
+  .projects-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2rem; }
+  .project-image { height: auto; aspect-ratio: 16 / 9; }
+  #projects .section-title, #resources .section-title { margin-bottom: 2.5rem; }
+}
+@media (min-width: 821px) and (max-width: 1050px) {
+  .contact-info { gap: .85rem; }
+  .contact-item { padding: 1.25rem; }
+}
+@media (max-width: 820px) {
+  .contact-content { gap: 2rem; }
+  .contact-info { grid-template-columns: 1fr; gap: .85rem; }
+  .contact-item { flex-direction: row; align-items: center; padding: 1.35rem; gap: 1rem; }
+  .contact-item h4 { margin-bottom: .3rem; }
+}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.01ms!important}}

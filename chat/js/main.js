@@ -3,6 +3,7 @@
 // ===========================
 
 const siteDb = window.firebaseServices?.db;
+const DEFAULT_PUBLIC_EMAIL = 'zilcondrea@gmail.com';
 
 // State management
 const state = {
@@ -164,10 +165,15 @@ function updateProfileUI() {
     document.getElementById('aboutBio').textContent = profile.bio;
   }
   
-  if (profile.email) {
-    document.getElementById('contactEmail').href = `mailto:${profile.email}`;
-    document.getElementById('contactEmail').textContent = profile.email;
-  }
+  // Keep legacy placeholder data from overriding the real public contact address.
+  const publicEmail = profile.email && !profile.email.endsWith('@example.com')
+    ? profile.email
+    : DEFAULT_PUBLIC_EMAIL;
+
+  document.querySelectorAll('[data-contact-email]').forEach(link => {
+    link.href = `mailto:${publicEmail}`;
+  });
+  document.getElementById('contactEmail').textContent = publicEmail;
 }
 
 function renderProjects() {
